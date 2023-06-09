@@ -1,0 +1,48 @@
+application:
+  region: ${AWS_REGION:ap-southeast-1}
+  producerEngine: kafka
+
+debezium:
+  connector: "io.debezium.connector.mysql.MySqlConnector"
+  engineName: debezium-embedded-engine
+  serverId: 8194
+  offsetStorage: "com.cdc.adapter.out.DynamoOffsetBackingStore"
+  offsetFlushIntervalMs: 5000
+  mariadb:
+    serverName: mariadb-server
+    hostName: ${MARIA_HOSTNAME:localhost}
+    port: ${MARIA_PORT:3306}
+    userName: ${MARIA_USER:mysqluser}
+    password: ${MARIA_PASSWORD:mysqlpw}
+    schemasEnable: true
+    snapshotMode: SCHEMA_ONLY_RECOVERY
+    databaseIncludeList: "demo_database"
+    tableIncludeList: "demo_database.orders"
+    databaseClassHistory: "com.cdc.adapter.out.S3DatabaseHistory"
+    databaseHistoryLocalPath: history.dat
+    databaseHistoryS3BucketName: s3-bucket
+    databaseHistoryS3KeyName: history.dat
+
+dynamodb:
+  tableName: mariadb_offset_backing_store
+  keyName: TrackingOffsetKey
+  valueName: TrackingOffsetInfo
+  region: ${AWS_REGION:ap-southeast-1}
+
+kafka:
+  bootstrapServers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}  #http://kafka.devaws.local:9092
+  producerConfig:
+    keySerializer: org.apache.kafka.common.serialization.StringSerializer
+    valueSerializer: org.apache.kafka.common.serialization.ByteArraySerializer
+    properties: "acks:1;retry.backoff.ms:100;retries:30;linger.ms:2;bufferMemory:33554432"
+
+  topicConfig:
+    name: debezium-aws-embedded
+    properties: "retention.ms:432000000;segment.bytes:26214400;retention.bytes:1048576000;compression.type:lz4"
+    partitions: ${KAFKA_TOPIC_PARTITIONS:2}
+    replications: ${KAFKA_TOPIC_REPLICATIONS:1}
+
+kinesis:
+  topicName: debezium-aws-embedded
+  appName: debezium-embedded-engine
+  region: ${AWS_REGION:ap-southeast-1}
